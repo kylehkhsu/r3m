@@ -72,7 +72,7 @@ class StateEmbedding(gym.ObservationWrapper):
         device (str, 'cuda'): where to allocate the model.
 
     """
-    def __init__(self, env, embedding_name=None, device='cuda', load_path="", proprio=0, camera_name=None, env_name=None):
+    def __init__(self, env, embedding_name=None, device='cuda', load_path="", proprio=0, camera_name=None, env_name=None, random=False):
         gym.ObservationWrapper.__init__(self, env)
 
         self.proprio = proprio
@@ -81,6 +81,8 @@ class StateEmbedding(gym.ObservationWrapper):
         if load_path == "clip":
             import clip
             model, cliptransforms = clip.load("RN50", device="cuda")
+            if random:
+                model.initialize_parameters()
             embedding = ClipEnc(model)
             embedding.eval()
             embedding_dim = 1024
@@ -93,7 +95,7 @@ class StateEmbedding(gym.ObservationWrapper):
                             T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         elif "r3m" == load_path:
             from r3m import load_r3m_reproduce
-            rep = load_r3m_reproduce("r3m")
+            rep = load_r3m_reproduce("r3m", random=random)
             rep.eval()
             embedding_dim = rep.module.outdim
             embedding = rep

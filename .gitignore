@@ -3,3 +3,5 @@ __pycache__/
 .nfs*
 *.ipynb*
 *.egg*
+
+.DS_Store

@@ -36,6 +36,7 @@ env_kwargs:
     proprio       :   ${proprio}  
     lang_cond     :   False
     gc            :   False
+    random        :   False
 
 # demo reparsing arguments (states -> image embeddings)
 reparse_kwargs:

@@ -3,6 +3,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 from collections import namedtuple
+
+import ipdb
 from r3meval.utils.gym_env import GymEnv
 from r3meval.utils.obs_wrappers import MuJoCoPixelObs, StateEmbedding
 from r3meval.utils.sampling import sample_paths
@@ -23,7 +25,7 @@ from metaworld.envs import (ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE,
 
 def env_constructor(env_name, device='cuda', image_width=256, image_height=256,
                     camera_name=None, embedding_name='resnet50', pixel_based=True,
-                    render_gpu_id=0, load_path="", proprio=False, lang_cond=False, gc=False):
+                    render_gpu_id=0, load_path="", proprio=False, lang_cond=False, gc=False, random=False):
 
     ## If pixel based will wrap in a pixel observation wrapper
     if pixel_based:
@@ -41,7 +43,7 @@ def env_constructor(env_name, device='cuda', image_width=256, image_height=256,
                            camera_name=camera_name, device_id=render_gpu_id)
         ## Wrapper which encodes state in pretrained model
         e = StateEmbedding(e, embedding_name=embedding_name, device=device, load_path=load_path, 
-                        proprio=proprio, camera_name=camera_name, env_name=env_name)
+                        proprio=proprio, camera_name=camera_name, env_name=env_name, random=random)
         e = GymEnv(e)
     else:
         print("Only supports pixel based")
@@ -96,7 +98,7 @@ def bc_train_loop(job_data:dict) -> None:
 
     # Infers the location of the demos
     ## V2 is metaworld, V0 adroit, V3 kitchen
-    data_dir = '/iris/u/surajn/data/r3m/'
+    data_dir = '/iris/u/kylehsu/data/probe/'
     if "v2" in job_data['env_kwargs']['env_name']:
         demo_paths_loc = data_dir + 'final_paths_multiview_meta_200/' + job_data['camera'] + '/' + job_data['env_kwargs']['env_name'] + '.pickle'
     elif "v0" in job_data['env_kwargs']['env_name']:
