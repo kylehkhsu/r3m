@@ -9,38 +9,41 @@ import torch.nn as nn
 
 class FCNetwork(nn.Module):
     def __init__(self, obs_dim, act_dim,
-                 hidden_sizes=(64,64),
-                 nonlinearity='tanh',   # either 'tanh' or 'relu'
-                 in_shift = None,
-                 in_scale = None,
-                 out_shift = None,
-                 out_scale = None):
+                 hidden_sizes=(64, 64),
+                 nonlinearity='tanh',  # either 'tanh' or 'relu'
+                 in_shift=None,
+                 in_scale=None,
+                 out_shift=None,
+                 out_scale=None,
+                 batch_norm=True):
         super(FCNetwork, self).__init__()
 
         self.obs_dim = obs_dim
         self.act_dim = act_dim
         assert type(hidden_sizes) == tuple
-        self.layer_sizes = (obs_dim, ) + hidden_sizes + (act_dim, )
+        self.layer_sizes = (obs_dim,) + hidden_sizes + (act_dim,)
         self.set_transformations(in_shift, in_scale, out_shift, out_scale)
         self.proprio_only = False
+        self.batch_norm = batch_norm
 
         # Batch Norm Layers
-        self.bn = torch.nn.BatchNorm1d(obs_dim)
+        if self.batch_norm:
+            self.bn = torch.nn.BatchNorm1d(obs_dim)
 
         # hidden layers
-        self.fc_layers = nn.ModuleList([nn.Linear(self.layer_sizes[i], self.layer_sizes[i+1]) \
-                         for i in range(len(self.layer_sizes) -1)])
+        self.fc_layers = nn.ModuleList([nn.Linear(self.layer_sizes[i], self.layer_sizes[i + 1]) \
+                                        for i in range(len(self.layer_sizes) - 1)])
         self.nonlinearity = torch.relu if nonlinearity == 'relu' else torch.tanh
 
     def set_transformations(self, in_shift=None, in_scale=None, out_shift=None, out_scale=None):
         # store native scales that can be used for resets
         self.transformations = dict(in_shift=in_shift,
-                           in_scale=in_scale,
-                           out_shift=out_shift,
-                           out_scale=out_scale
-                          )
-        self.in_shift  = torch.from_numpy(np.float32(in_shift)) if in_shift is not None else torch.zeros(self.obs_dim)
-        self.in_scale  = torch.from_numpy(np.float32(in_scale)) if in_scale is not None else torch.ones(self.obs_dim)
+                                    in_scale=in_scale,
+                                    out_shift=out_shift,
+                                    out_scale=out_scale
+                                    )
+        self.in_shift = torch.from_numpy(np.float32(in_shift)) if in_shift is not None else torch.zeros(self.obs_dim)
+        self.in_scale = torch.from_numpy(np.float32(in_scale)) if in_scale is not None else torch.ones(self.obs_dim)
         self.out_shift = torch.from_numpy(np.float32(out_shift)) if out_shift is not None else torch.zeros(self.act_dim)
         self.out_scale = torch.from_numpy(np.float32(out_scale)) if out_scale is not None else torch.ones(self.act_dim)
 
@@ -51,10 +54,11 @@ class FCNetwork(nn.Module):
             out = x.to('cpu')
         else:
             out = x
-        
+
         ## BATCHNORM
-        out = self.bn(out)
-        for i in range(len(self.fc_layers)-1):
+        if self.batch_norm:
+            out = self.bn(out)
+        for i in range(len(self.fc_layers) - 1):
             out = self.fc_layers[i](out)
             out = self.nonlinearity(out)
         out = self.fc_layers[-1](out)

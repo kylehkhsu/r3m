@@ -23,11 +23,13 @@ def init(module, weight_init, bias_init, gain=1):
     bias_init(module.bias.data)
     return module
 
-def _get_embedding(embedding_name='resnet34', load_path="", *args, **kwargs):
-    if load_path == "random":
+def _get_embedding(embedding_name='resnet34', load_path='random', *args, **kwargs):
+    if load_path == 'random':
         prt = False
-    else:
+    elif load_path == 'imagenet':
         prt = True
+    else:
+        raise ValueError
     if embedding_name == 'resnet34':
         model = models.resnet34(pretrained=prt, progress=False)
         embedding_dim = 512
@@ -87,7 +89,7 @@ class StateEmbedding(gym.ObservationWrapper):
             embedding.eval()
             embedding_dim = 1024
             self.transforms = cliptransforms
-        elif (load_path == "random") or (load_path == ""):
+        elif (load_path == "random") or (load_path == "imagenet"):
                 embedding, embedding_dim = _get_embedding(embedding_name=embedding_name, load_path=load_path)
                 self.transforms = T.Compose([T.Resize(256),
                             T.CenterCrop(224),

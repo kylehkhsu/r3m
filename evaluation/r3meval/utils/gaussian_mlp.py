@@ -13,7 +13,8 @@ class MLP:
                  hidden_sizes=(64,64),
                  min_log_std=-3,
                  init_log_std=0,
-                 seed=None):
+                 seed=None,
+                 batch_norm=True):
         """
         :param env_spec: specifications of the env (see utils/gym_env.py)
         :param hidden_sizes: network hidden layer sizes (currently 2 layers only)
@@ -33,7 +34,7 @@ class MLP:
 
         # Policy network
         # ------------------------
-        self.model = FCNetwork(self.n, self.m, hidden_sizes)
+        self.model = FCNetwork(self.n, self.m, hidden_sizes, batch_norm=batch_norm)
         # make weights small
         for param in list(self.model.parameters())[-2:]:  # only last layer
            param.data = 1e-2 * param.data
@@ -42,7 +43,7 @@ class MLP:
 
         # Old Policy network
         # ------------------------
-        self.old_model = FCNetwork(self.n, self.m, hidden_sizes)
+        self.old_model = FCNetwork(self.n, self.m, hidden_sizes, batch_norm=batch_norm)
         self.old_log_std = Variable(torch.ones(self.m) * init_log_std)
         self.old_params = list(self.old_model.parameters()) + [self.old_log_std]
         for idx, param in enumerate(self.old_params):

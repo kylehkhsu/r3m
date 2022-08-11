@@ -56,7 +56,7 @@ def make_bc_agent(env_kwargs:dict, bc_kwargs:dict, demo_paths:list, epochs:int, 
     e = env_constructor(**env_kwargs)
 
     ## Creates MLP (Where the FC Network has a batchnorm in front of it)
-    policy = MLP(e.spec, hidden_sizes=(256, 256), seed=seed)
+    policy = MLP(e.spec, hidden_sizes=(256, 256), seed=seed, batch_norm=bc_kwargs['batch_norm'])
     policy.model.proprio_only = False
         
     ## Pass the encoder params to the BC agent (for finetuning)

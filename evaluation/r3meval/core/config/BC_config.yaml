@@ -52,6 +52,7 @@ bc_kwargs:
   finetune        :   False
   proprio         :   ${proprio}  
   proprio_only    :   False
+  batch_norm      :   True
 
 # general outputs
 job_name          :   'R3M'
