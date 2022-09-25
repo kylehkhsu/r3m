@@ -7,6 +7,9 @@ Minimize bc loss (MLE, MSE, RWR etc.) with pytorch optimizers
 """
 
 import logging
+
+import ipdb
+
 logging.disable(logging.CRITICAL)
 import numpy as np
 import time as timer
@@ -29,6 +32,7 @@ class BC:
                  finetune = False,
                  proprio = 0,
                  encoder_params = [],
+                 l1_weight=0,
                  **kwargs,
                  ):
 
@@ -41,6 +45,7 @@ class BC:
         self.save_logs = save_logs
         self.finetune = finetune
         self.proprio = proprio
+        self.l1_weight = l1_weight
         self.steps = 0
 
         if set_transforms:
@@ -87,7 +92,9 @@ class BC:
         if self.loss_type == 'MLE':
             return self.mle_loss(data, idx)
         elif self.loss_type == 'MSE':
-            return self.mse_loss(data, idx)
+            return self.mse_loss(data, idx) + \
+                self.l1_weight * torch.linalg.norm(self.policy.model.fc_layers[0].weight, ord=1) / self.policy.model.fc_layers[0].weight.shape[1]
+
         else:
             print("Please use valid loss type")
             return None
@@ -136,7 +143,7 @@ class BC:
 
         # log stats before
         if self.save_logs:
-            loss_val = self.loss(data, idx=range(num_samples)).data.numpy().ravel()[0]
+            loss_val = self.loss(data, idx=range(self.mb_size)).data.numpy().ravel()[0]
             self.logger.log_kv('loss_before', loss_val)
 
         # train loop
@@ -153,7 +160,7 @@ class BC:
         # log stats after
         if self.save_logs:
             self.logger.log_kv('epoch', self.epochs)
-            loss_val = self.loss(data, idx=range(num_samples)).data.numpy().ravel()[0]
+            loss_val = self.loss(data, idx=range(self.mb_size)).data.numpy().ravel()[0]
             self.logger.log_kv('loss_after', loss_val)
             self.logger.log_kv('time', (timer.time()-ts))
 

@@ -2,6 +2,7 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+import ipdb
 import numpy as np
 import gym
 from gym.spaces.box import Box
@@ -59,6 +60,48 @@ class ClipEnc(nn.Module):
         return e
 
 
+class PCAEmbeddingWrapper(nn.Module):
+    def __init__(self, embedding, device, load_path, transforms, demo_paths, pca, pca_dim):
+        super().__init__()
+        self.embedding = embedding
+        self.transforms = transforms
+        self.load_path = load_path
+
+        images = np.array([demo['images'] for demo in demo_paths])
+        images = [[Image.fromarray(images[i, j]) for j in range(images.shape[1])] for i in range(images.shape[0])]
+        embeddings = []
+        import einops
+        with torch.inference_mode():
+            for traj in images:
+                traj = torch.stack([
+                    self.transforms(image) for image in traj
+                ])
+
+                if 'r3m' in self.load_path:
+                    traj *= 255.0
+                embeddings.append(embedding(traj.to(device)).cpu())
+            embeddings = torch.stack(embeddings).to(device)
+            embeddings = einops.rearrange(embeddings, 'n t d -> (n t) d')
+
+            self.register_buffer('embedding_mean', embeddings.mean(dim=0, keepdim=True))
+
+            if pca_dim == -1:
+                pca_dim = min(embeddings.shape[0], embeddings.shape[1])
+            else:
+                pca_dim = min(pca_dim, embeddings.shape[0], embeddings.shape[1])
+
+            X = embeddings - self.embedding_mean
+            U, S, Vh = torch.linalg.svd(X)
+            self.register_buffer('components', Vh[:pca_dim])
+            self.register_buffer('explained_variance', ((S ** 2) / (X.shape[0] - 1))[:pca_dim])
+
+    def forward(self, x):
+        x = self.embedding(x)
+        x = x - self.embedding_mean
+        x = x @ self.components.T
+        x = x / torch.sqrt(self.explained_variance)
+        return x
+
 class StateEmbedding(gym.ObservationWrapper):
     """
     This wrapper places a convolution model over the observation.
@@ -74,7 +117,7 @@ class StateEmbedding(gym.ObservationWrapper):
         device (str, 'cuda'): where to allocate the model.
 
     """
-    def __init__(self, env, embedding_name=None, device='cuda', load_path="", proprio=0, camera_name=None, env_name=None, random=False):
+    def __init__(self, env, embedding_name=None, device='cuda', load_path="", proprio=0, camera_name=None, env_name=None, random=False, demo_paths=None, pca=False, pca_dim=-1):
         gym.ObservationWrapper.__init__(self, env)
 
         self.proprio = proprio
@@ -117,7 +160,12 @@ class StateEmbedding(gym.ObservationWrapper):
         self.device = device
         embedding.to(device=device)
 
-        self.embedding, self.embedding_dim = embedding, embedding_dim
+        if pca:
+            embedding = PCAEmbeddingWrapper(embedding, device, self.load_path, self.transforms, demo_paths, pca, pca_dim)
+            self.embedding, self.embedding_dim = embedding, pca_dim
+        else:
+            self.embedding, self.embedding_dim = embedding, embedding_dim
+
         self.observation_space = Box(
                     low=-np.inf, high=np.inf, shape=(self.embedding_dim+self.proprio,))
 
