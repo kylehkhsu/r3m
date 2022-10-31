@@ -94,7 +94,8 @@ class R3M(nn.Module):
                 )
 
         ## Input must be [0, 255], [3,244,244]
-        obs = obs.float() /  255.0
+        if obs.dtype == torch.uint8:
+            obs = obs.float() / 255.0
         obs_p = preprocess(obs)
         h = self.convnet(obs_p)
         return h
