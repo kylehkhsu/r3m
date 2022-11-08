@@ -41,7 +41,7 @@ def remove_language_head(state_dict):
             del state_dict[key]
     return state_dict
 
-def load_r3m(modelid):
+def load_r3m(modelid, pretrained):
     home = '/iris/u/kylehsu/data/probe'
     if modelid == "resnet50":
         foldername = "r3m_50"
@@ -71,7 +71,8 @@ def load_r3m(modelid):
     rep = hydra.utils.instantiate(cleancfg)
     rep = torch.nn.DataParallel(rep)
     r3m_state_dict = remove_language_head(torch.load(modelpath, map_location=torch.device(device))['r3m'])
-    rep.load_state_dict(r3m_state_dict)
+    if pretrained:
+        rep.load_state_dict(r3m_state_dict)
     return rep
 
 def load_r3m_reproduce(modelid, random=False):
